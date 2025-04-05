@@ -1,6 +1,6 @@
 <?php
 
-require_once 'Uploader.php';
+require_once 'uploader.php';
 
 try {
     $uploader = new Uploader(__DIR__ . '/uploads');
