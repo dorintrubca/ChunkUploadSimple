@@ -1,0 +1,71 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Upload</title>
+</head>
+<body>
+    <input type="file" id="fileInput" />
+    <button onclick="startUpload()">Upload</button>
+    <div id="progress">Progress: 0%</div>
+
+    <script>
+        const CHUNK_SIZE = 1024 * 1024;
+
+        let uploadId = null;
+
+        function startUpload() {
+            const file = document.getElementById('fileInput').files[0];
+            if (!file) {
+                alert("Please select a file.");
+                return;
+            }
+
+            uploadId = `${file.name}-${file.size}-${Date.now()}`;
+            uploadChunk(file, 0);
+        }
+
+        function uploadChunk(file, chunkIndex) {
+            const start = chunkIndex * CHUNK_SIZE;
+            const end = Math.min(start + CHUNK_SIZE, file.size);
+            const chunk = file.slice(start, end);
+            const totalChunks = Math.ceil(file.size / CHUNK_SIZE);
+
+            const formData = new FormData();
+            formData.append('chunk', chunk);
+            formData.append('uploadId', uploadId);
+            formData.append('fileName', file.name);
+            formData.append('chunkIndex', chunkIndex);
+            formData.append('totalChunks', totalChunks);
+
+            fetch('upload.php', {
+                method: 'POST',
+                body: formData
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    const progress = Math.round(((chunkIndex + 1) / totalChunks) * 100);
+                    document.getElementById('progress').innerText = `Progress: ${progress}%`;
+
+                    if (end < file.size) {
+                        uploadChunk(file, chunkIndex + 1);
+                    } else {
+                        document.getElementById('progress').innerText = 'Upload complete!';
+                    }
+                } else {
+                    console.error('Upload error:', data.error);
+                    alert("Error during upload: " + data.error);
+                }
+            })
+            .catch(error => {
+                console.warn("Connection error, retrying chunk", chunkIndex);
+
+                setTimeout(() => {
+                    uploadChunk(file, chunkIndex);
+                }, 2000);
+            });
+        }
+    </script>
+</body>
+</html>
